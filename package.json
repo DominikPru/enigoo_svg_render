@@ -4,6 +4,14 @@
   "description": "Enigoo SVG render",
   "main": "src/index.tsx",
   "keywords": ["react", "react-native", "svg", "renderer"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DominikPru/enigoo_svg_render"
+  },
+  "bugs": {
+    "url": "https://github.com/DominikPru/enigoo_svg_render/issues"
+  },
+  "homepage": "https://github.com/DominikPru/enigoo_svg_render#readme",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
