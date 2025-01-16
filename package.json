@@ -1,0 +1,23 @@
+{
+  "name": "@dominikprusa/enigoo_svg_render",
+  "version": "1.0.0",
+  "description": "Enigoo SVG render",
+  "main": "src/index.tsx",
+  "keywords": ["react", "react-native", "svg", "renderer"],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Dominik Prusa",
+  "license": "ISC",
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-native": "^0.76.6",
+    "react-native-gesture-handler": "^2.22.0",
+    "react-native-reanimated": "^3.16.7",
+    "react-native-svg": "^15.11.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.7",
+    "@types/react-native": "^0.73.0"
+  }
+}

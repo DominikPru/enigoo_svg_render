@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+      "target": "esnext",
+      "module": "esnext",
+      "lib": ["dom", "esnext"],
+      "jsx": "react-jsx", 
+      "moduleResolution": "node",
+      "strict": true,
+      "noImplicitAny": false,
+      "skipLibCheck": true,
+      "esModuleInterop": true,
+      "forceConsistentCasingInFileNames": true,
+      "resolveJsonModule": true,
+      "isolatedModules": true,
+      "allowSyntheticDefaultImports": true,
+      "baseUrl": ".",  // Add this line to set base directory
+      "paths": {
+        "@enigoo_svg_render/*": ["../enigoo_svg_render/src/*"]
+      }
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+  }
+  
