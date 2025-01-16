@@ -1,6 +1,6 @@
 {
   "name": "@dominikprusa/enigoo_svg_render",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Enigoo SVG render",
   "main": "src/index.tsx",
   "keywords": ["react", "react-native", "svg", "renderer"],
