@@ -1,27 +1,25 @@
-import React, {Fragment, PropsWithChildren, useCallback} from 'react';
-import SeatNew from './SeatNew.tsx';
-import {Row} from '../types.ts';
+import React, { Fragment, PropsWithChildren, useCallback, memo } from 'react';
+import SeatNew from './SeatNew';
+import { Row } from '../types';
 
 interface RowProps {
   item: Row;
-  resizeScale: number;
 }
 
-const RowComponent = (props: PropsWithChildren<RowProps>) => {
+const RowComponent = memo((props: PropsWithChildren<RowProps>) => {
   const renderSeats = useCallback(() => {
-    return props.item.seats.map((item, index) => {
+    return props.item.seats.map((item) => {
       return (
         <SeatNew
           item={item}
           row={props.item.label}
-          key={index}
-          resizeScale={props.resizeScale}
+          key={item.uuid}
         />
       );
     });
-  }, [props.item.seats, props.item.label, props.resizeScale]);
+  }, [props.item.seats, props.item.label]);
 
   return <>{renderSeats()}</>;
-};
+});
 
 export default RowComponent;

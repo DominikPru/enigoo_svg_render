@@ -84,7 +84,7 @@ export interface SeatCategory {
   textColor: string;
 }
 export interface Seat {
-  id: 594392 | undefined;
+  id: number | undefined;
   uuid: string;
   x: number;
   y: number;

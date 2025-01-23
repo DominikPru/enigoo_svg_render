@@ -25,12 +25,14 @@ export type ResizeContextType = {
   coords: Coords;
   resizeScale: number;
   changeResizeScale: (increase: boolean) => void;
+  triggerLoadCallback: () => void;
 };
 
 interface ResizeContextProps {
   children: JSX.Element;
   initialScale: number;
   data: BaseInput;
+  loadCallback: () => void;
 }
 
 export const ResizeContext = createContext<ResizeContextType | undefined>(
@@ -41,6 +43,7 @@ const ResizeProvider = ({
   children,
   initialScale,
   data,
+  loadCallback,
 }: ResizeContextProps) => {
   const [loading, setLoading] = useState(true);
   const [sourceData, setSourceData] = useState<BaseInput>(data);
@@ -114,7 +117,11 @@ const ResizeProvider = ({
     }
   };
 
-  console.debug(resizeScale);
+  const triggerLoadCallback = () => {
+    if (loadCallback) {
+      loadCallback();
+    }
+  };
 
   if (loading) {
     return null;
@@ -122,7 +129,14 @@ const ResizeProvider = ({
 
   return (
     <ResizeContext.Provider
-      value={{ viewBox, coords, sourceData, resizeScale, changeResizeScale }}
+      value={{
+        viewBox,
+        coords,
+        sourceData,
+        resizeScale,
+        changeResizeScale,
+        triggerLoadCallback,
+      }}
     >
       {children}
     </ResizeContext.Provider>

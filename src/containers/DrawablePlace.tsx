@@ -1,4 +1,4 @@
-import React, { useCallback, useContext } from "react";
+import React, { useCallback, useContext, useState } from "react";
 import {
   DEVICE_HEIGHT,
   DEVICE_WIDTH,
@@ -8,23 +8,26 @@ import {
 import RowComponent from "../components/Row";
 import { Svg, G } from "react-native-svg";
 import { SvgCssUri } from "react-native-svg/css";
-import { View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 
-const DrawablePlace = () => {
-  const { sourceData, viewBox, resizeScale } = useContext(
+interface DrawablePlaceProps {
+  containerDimensions: { height: number; width: number };
+}
+
+const DrawablePlace = ({ containerDimensions }: DrawablePlaceProps) => {
+  const { sourceData, viewBox, resizeScale, triggerLoadCallback } = useContext(
     ResizeContext
   ) as ResizeContextType;
 
   const svgWidth = sourceData.data.svgs[0].width * resizeScale;
   const svgHeight = sourceData.data.svgs[0].height * resizeScale;
 
-  // Calculate offsets to center the SVG
-  const verticalOffset = (DEVICE_HEIGHT - svgHeight) / 2;
-  const horizontalOffset = (DEVICE_WIDTH - svgWidth) / 2;
+  const verticalOffset = (containerDimensions.height - svgHeight) / 2;
+  const horizontalOffset = (containerDimensions.width - svgWidth) / 2;
 
   const renderRows = useCallback(() => {
     return sourceData.data.rows.map((item, index) => (
-      <RowComponent item={item} key={index} resizeScale={resizeScale} />
+      <RowComponent item={item} key={index} />
     ));
   }, [sourceData]);
 
@@ -32,14 +35,19 @@ const DrawablePlace = () => {
     <View style={{ position: "relative" }}>
       {/* Scaled Background SVG */}
       <SvgCssUri
-        width={svgWidth} // Scaled width
-        height={svgHeight} // Scaled height
+        width={svgWidth}
+        height={svgHeight}
         style={{
           position: "absolute",
           top: verticalOffset,
           left: horizontalOffset,
         }}
         uri={sourceData.data.svgs[0].data}
+        onLayout={() => {
+          setTimeout(() => {
+            triggerLoadCallback();
+          }, 500);
+        }}
       />
       {/* Foreground SVG for Seats */}
       <Svg
