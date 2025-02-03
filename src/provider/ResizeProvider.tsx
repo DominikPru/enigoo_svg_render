@@ -43,7 +43,7 @@ const ResizeProvider = ({
   children,
   initialScale,
   data,
-  loadCallback,
+  loadCallback
 }: ResizeContextProps) => {
   const [loading, setLoading] = useState(true);
   const [sourceData, setSourceData] = useState<BaseInput>(data);
@@ -129,14 +129,7 @@ const ResizeProvider = ({
 
   return (
     <ResizeContext.Provider
-      value={{
-        viewBox,
-        coords,
-        sourceData,
-        resizeScale,
-        changeResizeScale,
-        triggerLoadCallback,
-      }}
+      value={{ viewBox, coords, sourceData, resizeScale, changeResizeScale, triggerLoadCallback }}
     >
       {children}
     </ResizeContext.Provider>

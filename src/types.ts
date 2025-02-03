@@ -90,7 +90,7 @@ export interface Seat {
   y: number;
   isSpaceRight: false | undefined;
   isSpaceLeft: false | undefined;
-  isRowLabel: boolean | undefined;
+  isRowLabel: boolean | undefined | 'left' | 'right';
   blocked: boolean | undefined;
   price: number | undefined;
   sector: string | undefined;

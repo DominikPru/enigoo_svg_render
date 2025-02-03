@@ -13,7 +13,7 @@ const RowComponent = memo((props: PropsWithChildren<RowProps>) => {
         <SeatNew
           item={item}
           row={props.item.label}
-          key={item.uuid}
+          key={item.uuid}  // Using a unique identifier for the key
         />
       );
     });

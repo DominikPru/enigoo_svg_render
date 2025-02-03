@@ -1,9 +1,10 @@
-import { Seat } from '../types';
+import { Seat } from '@dominikprusa/enigoo_svg_render/src/types';
 
 class SeatSelectionManager {
   private static instance: SeatSelectionManager;
   private selectedSeats: Seat[] = [];
   private listeners: Array<(seats: Seat[]) => void> = [];
+  private verificationCallback: ((seat: Seat) => Promise<boolean>) | null = null;
 
   private constructor() {}
 
@@ -14,6 +15,38 @@ class SeatSelectionManager {
     return SeatSelectionManager.instance;
   }
 
+  setVerificationCallback(callback: (seat: Seat) => Promise<boolean>) {
+    this.verificationCallback = callback;
+  }
+
+  async toggleSeat(seat: Seat): Promise<boolean> {
+    const exists = this.selectedSeats.some(s => s.id === seat.id);
+
+    if (!this.verificationCallback) {
+      if (exists) {
+        this.removeSeat(seat);
+      } else {
+        this.addSeat(seat);
+      }
+      return true;
+    }
+
+    if (exists) {
+      this.removeSeat(seat);
+      return true;
+    }
+
+    try {
+      const isVerified = await this.verificationCallback(seat);
+      if (isVerified) {
+        this.addSeat(seat);
+      }
+      return isVerified;
+    } catch (error) {
+      return false;
+    }
+  }
+
   addSeat(seat: Seat) {
     if (!this.selectedSeats.some(s => s.id === seat.id)) {
       this.selectedSeats.push(seat);
@@ -22,26 +55,22 @@ class SeatSelectionManager {
   }
 
   removeSeat(seat: Seat) {
+    const initialSeatsLength = this.selectedSeats.length;
     this.selectedSeats = this.selectedSeats.filter(s => s.id !== seat.id);
-    this.notifyListeners();
+    if (this.selectedSeats.length !== initialSeatsLength) {
+      this.notifyListeners();
+    }
   }
 
-  toggleSeat(seat: Seat) {
-    const exists = this.selectedSeats.some(s => s.id === seat.id);
-    if (exists) {
-      this.removeSeat(seat);
-    } else {
-      this.addSeat(seat);
+  clearSelectedSeats() {
+    if (this.selectedSeats.length > 0) {
+      this.selectedSeats = [];
+      this.notifyListeners();
     }
   }
 
   getSelectedSeats(): Seat[] {
     return [...this.selectedSeats];
-  }
-
-  clearSelectedSeats() {
-    this.selectedSeats = [];
-    this.notifyListeners();
   }
 
   subscribe(listener: (seats: Seat[]) => void) {

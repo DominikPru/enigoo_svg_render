@@ -2,7 +2,6 @@ import React, { useContext, useState, useEffect, memo, useMemo } from "react";
 import { Text, Line, Circle } from "react-native-svg";
 import { ResizeContext, ResizeContextType } from "../provider/ResizeProvider";
 import { Seat } from "../types";
-import { useSeatSelection } from "../provider/SeatSelectionContext";
 import { seatSelection } from "../utils/seatSelectionExport";
 
 interface SeatComponentProps {
@@ -53,32 +52,34 @@ const SeatNew = memo(
       () => (isSelected ? darkenColor(fillColor, 0.2) : fillColor),
       [isSelected, fillColor]
     );
-
-    const { toggleSeat } = useSeatSelection();
-
+   
     const handlePress = React.useCallback(() => {
       if (item.blocked) return;
-
+    
       setIsLoading(true);
+    
+      seatSelection
+        .toggleSeat(item) // This triggers the seat toggle, including verification logic
+        .then((isVerified) => {
+          // Only toggle the selection state if the seat was successfully verified or added
+          if (isVerified) {
+            setIsSelected((prev) => !prev);
+          }
+          setIsLoading(false);
+        })
+        .catch(() => {
+          setIsLoading(false);
+        });
+    }, [item]);
 
-      const timer = setTimeout(() => {
-        setIsSelected((prev) => !prev);
-        setIsLoading(false);
-        toggleSeat(item);
-        seatSelection.toggleSeat(item);
-      }, 300);
-
-      return () => clearTimeout(timer);
-    }, [item, toggleSeat]);
 
     if (item.isRowLabel) {
       const fontSize = 14 * resizeScale;
-      const rowX = item.isSpaceLeft ? fontSize : -fontSize;
 
       return (
         <Text
-          x={item.x * resizeScale + rowX + fontSize / 2}
-          y={item.y * resizeScale + fontSize / 2}
+          x={(item.x * resizeScale) - fontSize / 2}
+          y={(item.y * resizeScale) + fontSize / 2}
           fontSize={fontSize}
           fontWeight="bold"
           fontStyle="italic"

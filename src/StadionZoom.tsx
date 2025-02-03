@@ -1,4 +1,3 @@
-// StadionZoom.tsx
 import React, { useContext, useEffect, useState } from "react";
 import Animated, {
   useSharedValue,
@@ -11,40 +10,50 @@ import {
   GestureDetector,
   Gesture,
 } from "react-native-gesture-handler";
-import { Dimensions, View } from "react-native";
-import DrawablePlace from "../src/containers/DrawablePlace";
+import { Dimensions, View, TouchableOpacity } from "react-native";
+import DrawablePlace from "./containers/DrawablePlace";
 import {
   ResizeContext,
   ResizeContextType,
-} from "../src/provider/ResizeProvider";
+} from "./provider/ResizeProvider";
 
-const StadionZoom = () => {
-  const { viewBox, resizeScale } = useContext(
-    ResizeContext
-  ) as ResizeContextType;
-  const [containerDimensions, setContainerDimensions] = useState({
-    width: 0,
-    height: 0,
-  });
+interface StadionZoomProps {
+  ZoomInComponent?: React.ComponentType;
+  ZoomOutComponent?: React.ComponentType;
+  CenterComponent?: React.ComponentType;
+  controlsContainerStyle?: object;
+}
 
+const StadionZoom = ({
+  ZoomInComponent,
+  ZoomOutComponent,
+  CenterComponent,
+  controlsContainerStyle,
+}: StadionZoomProps) => {
+  const { viewBox, resizeScale, sourceData } = useContext(ResizeContext) as ResizeContextType;
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+  
   // Initialize shared values
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
   const focalX = useSharedValue(0);
   const focalY = useSharedValue(0);
-  const zoomDelay = useSharedValue(0);
+  const zoomDelay = useSharedValue(1);
   const lastOffsetX = useSharedValue(0);
   const lastOffsetY = useSharedValue(0);
 
   // Update scale when container dimensions change
   useEffect(() => {
     if (containerDimensions.width && containerDimensions.height) {
+      console.log("containerDimensions", containerDimensions);
+      console.log("viewBox", viewBox);
       const initialZoom = Math.min(
         containerDimensions.width / viewBox.width,
         containerDimensions.height / viewBox.height
       );
-      scale.value = initialZoom * 0.8;
+        scale.value = sourceData.data.svgs.length === 0 ? initialZoom * 1.1 : initialZoom * 0.8;
+      
     }
   }, [containerDimensions, viewBox]);
 
@@ -55,6 +64,30 @@ const StadionZoom = () => {
     overshootClamping: false,
     restDisplacementThreshold: 0.01,
     restSpeedThreshold: 0.01,
+  };
+
+  const handleZoomIn = () => {
+    const newScale = Math.min(scale.value * 1.3, 3.3 / resizeScale);
+    scale.value = withSpring(newScale, ANIMATION_CONFIG);
+  };
+
+  const handleZoomOut = () => {
+    const initialZoom = Math.min(
+      containerDimensions.width / viewBox.width,
+      containerDimensions.height / viewBox.height
+    );
+    const newScale = Math.max(scale.value * 0.8, initialZoom * 0.8);
+    scale.value = withSpring(newScale, ANIMATION_CONFIG);
+  };
+
+  const handleCenter = () => {
+    const initialZoom = Math.min(
+      containerDimensions.width / viewBox.width,
+      containerDimensions.height / viewBox.height
+    );
+    scale.value = withSpring(sourceData.data.svgs.length === 0 ? initialZoom * 1.1 : initialZoom * 0.8, ANIMATION_CONFIG);
+    translateX.value = withSpring(0, ANIMATION_CONFIG);
+    translateY.value = withSpring(0, ANIMATION_CONFIG);
   };
 
   const pinchGesture = Gesture.Pinch()
@@ -69,14 +102,11 @@ const StadionZoom = () => {
         containerDimensions.height / viewBox.height
       );
       let newScale = scale.value * event.scale;
-      newScale = Math.max(
-        initialZoom * 0.8,
-        Math.min(newScale, 3.3 / resizeScale)
-      );
+      newScale = Math.max(sourceData.data.svgs.length === 0 ? initialZoom * 1.1 : initialZoom * 0.8, Math.min(newScale, 3.3 / resizeScale));
 
       scale.value = withSpring(newScale, ANIMATION_CONFIG, (isFinished) => {
         if (isFinished && scale.value < initialZoom) {
-          scale.value = withSpring(initialZoom * 0.8, ANIMATION_CONFIG);
+          scale.value = withSpring(sourceData.data.svgs.length === 0 ? initialZoom * 1.1 : initialZoom * 0.8, ANIMATION_CONFIG);
           translateX.value = withSpring(0, ANIMATION_CONFIG);
           translateY.value = withSpring(0, ANIMATION_CONFIG);
         }
@@ -85,16 +115,12 @@ const StadionZoom = () => {
       const scaleFactor = newScale / scale.value;
       translateX.value = withSpring(
         translateX.value -
-          (focalX.value - containerDimensions.width / 2) *
-            (scaleFactor - 1) *
-            0.6,
+          (focalX.value - containerDimensions.width / 2) * (scaleFactor - 1) * 0.6,
         ANIMATION_CONFIG
       );
       translateY.value = withSpring(
         translateY.value -
-          (focalY.value - containerDimensions.height / 2) *
-            (scaleFactor - 1) *
-            0.6,
+          (focalY.value - containerDimensions.height / 2) * (scaleFactor - 1) * 0.6,
         ANIMATION_CONFIG
       );
 
@@ -108,8 +134,8 @@ const StadionZoom = () => {
         containerDimensions.width / viewBox.width,
         containerDimensions.height / viewBox.height
       );
-      if (scale.value < initialZoom) {
-        scale.value = withSpring(initialZoom * 0.8, ANIMATION_CONFIG);
+      if (scale.value < (sourceData.data.svgs.length === 0 ? initialZoom * 1.3 : initialZoom)) {
+        scale.value = withSpring(sourceData.data.svgs.length === 0 ? initialZoom * 1.1 : initialZoom * 0.8, ANIMATION_CONFIG);
         translateX.value = withSpring(0, ANIMATION_CONFIG);
         translateY.value = withSpring(0, ANIMATION_CONFIG);
       }
@@ -131,11 +157,11 @@ const StadionZoom = () => {
         if (Math.abs(event.velocityX) > 50 || Math.abs(event.velocityY) > 50) {
           const scaledContentWidth = viewBox.width * scale.value;
           const scaledContentHeight = viewBox.height * scale.value;
-          const overflowX = Math.max(0, scaledContentWidth * 0.6);
-          const overflowY = Math.max(0, scaledContentHeight * 0.6);
+          const overflowX = Math.max(0, (scaledContentWidth * 0.6));
+          const overflowY = Math.max(0, (scaledContentHeight * 0.6));
 
-          const nextX = lastOffsetX.value + event.translationX / scale.value;
-          const nextY = lastOffsetY.value + event.translationY / scale.value;
+          const nextX = lastOffsetX.value + (event.translationX / scale.value);
+          const nextY = lastOffsetY.value + (event.translationY / scale.value);
 
           translateX.value = Math.max(Math.min(nextX, overflowX), -overflowX);
           translateY.value = Math.max(Math.min(nextY, overflowY), -overflowY);
@@ -179,6 +205,21 @@ const StadionZoom = () => {
             <DrawablePlace containerDimensions={containerDimensions} />
           </Animated.View>
         </GestureDetector>
+        
+        {/* Controls Container */}
+        <View style={[{ position: 'absolute', right: 16, top: 16 }, controlsContainerStyle]}>
+          <TouchableOpacity onPress={handleZoomIn} style={{ marginBottom: 8 }}>
+            {ZoomInComponent && <ZoomInComponent />}
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={handleZoomOut} style={{ marginBottom: 8 }}>
+            {ZoomOutComponent && <ZoomOutComponent />}
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={handleCenter}>
+            {CenterComponent && <CenterComponent />}
+          </TouchableOpacity>
+        </View>
       </View>
     </GestureHandlerRootView>
   );
