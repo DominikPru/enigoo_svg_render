@@ -1,17 +1,21 @@
-import { JSX, createContext, useEffect, useMemo, useState } from "react";
-import { BaseInput, Coords } from "../types";
-import { getResizeScale } from "../utils/resizer";
-import { Dimensions } from "react-native";
+import { JSX, createContext, useMemo, useState } from "react";
+import { XMLParser } from "fast-xml-parser";
+import { BaseInput, renderTypes } from "../types";
 
-export let DEVICE_WIDTH = Dimensions.get("window").width;
-export let DEVICE_HEIGHT = Dimensions.get("window").height;
+const XML_PARSER_CONFIG = {
+  ignoreAttributes: false,
+  attributeNamePrefix: '@_',
+  allowBooleanAttributes: true,
+} as const;
 
+// Types
 export interface ViewBoxBorder {
   lowx: number;
   lowy: number;
   highx: number;
   highy: number;
 }
+
 export interface ViewBoxProps {
   x: number;
   y: number;
@@ -22,10 +26,9 @@ export interface ViewBoxProps {
 export type ResizeContextType = {
   viewBox: ViewBoxProps;
   sourceData: BaseInput;
-  coords: Coords;
   resizeScale: number;
-  changeResizeScale: (increase: boolean) => void;
   triggerLoadCallback: () => void;
+  renderType: renderTypes;
 };
 
 interface ResizeContextProps {
@@ -33,104 +36,105 @@ interface ResizeContextProps {
   initialScale: number;
   data: BaseInput;
   loadCallback: () => void;
+  renderType: renderTypes;
 }
 
-export const ResizeContext = createContext<ResizeContextType | undefined>(
-  undefined
-);
+export const ResizeContext = createContext<ResizeContextType | undefined>(undefined);
 
-const ResizeProvider = ({
-  children,
-  initialScale,
-  data,
-  loadCallback
-}: ResizeContextProps) => {
-  const [loading, setLoading] = useState(true);
-  const [sourceData, setSourceData] = useState<BaseInput>(data);
-  const [coords, setCoords] = useState<Coords>(sourceData.data.cords);
-  const [resizeScale, setResizeScale] = useState(initialScale);
+const calculateViewBoxBorder = (sourceData: BaseInput): ViewBoxBorder => {
+  let border = {
+    lowx: Infinity,
+    lowy: Infinity,
+    highx: -Infinity,
+    highy: -Infinity,
+  };
 
-  const viewBoxBorder = useMemo<ViewBoxBorder>(() => {
-    let lowx = Infinity;
-    let lowy = Infinity;
-    let highx = -Infinity;
-    let highy = -Infinity;
-    sourceData.data.rows.forEach((row) => {
-      row.seats.forEach((seat) => {
-        if (seat.x < lowx) {
-          lowx = seat.x;
-        }
-        if (seat.x > highx) {
-          highx = seat.x;
-        }
-        if (seat.y < lowy) {
-          lowy = seat.y;
-        }
-        if (seat.y > highy) {
-          highy = seat.y;
-        }
-      });
-    });
+  const updateBounds = ({ x, y, width = 0, height = 0 } = {}) => {
+    if (x !== undefined && y !== undefined) {
+      border.lowx = Math.min(border.lowx, x);
+      border.lowy = Math.min(border.lowy, y);
+      border.highx = Math.max(border.highx, x + width);
+      border.highy = Math.max(border.highy, y + height);
+    }
+  };
 
-    return {
-      lowx,
-      lowy,
-      highx,
-      highy,
-    };
-  }, [sourceData.data.rows]);
+  sourceData.data.rows.forEach(row => row.seats.forEach(updateBounds));
+  sourceData.data.shapes.forEach(updateBounds);
+  sourceData.data.texts.forEach(updateBounds);
 
-  const viewBox = useMemo<ViewBoxProps>(() => {
+  return border;
+};
+
+const calculateViewBox = (
+  renderType: renderTypes,
+  viewBoxBorder: ViewBoxBorder,
+  resizeScale: number,
+  viewBoxValues: number[]
+): ViewBoxProps => {
+  if (renderType === renderTypes.SEAT) {
     return {
       x: viewBoxBorder.lowx * resizeScale,
       y: viewBoxBorder.lowy * resizeScale,
       width: (viewBoxBorder.highx - viewBoxBorder.lowx) * resizeScale,
       height: (viewBoxBorder.highy - viewBoxBorder.lowy) * resizeScale,
     };
-  }, [resizeScale, viewBoxBorder]);
-
-  useEffect(() => {
-    if (resizeScale !== 1) {
-      setCoords({
-        width: sourceData.data.cords.width,
-        height: sourceData.data.cords.height,
-        x: sourceData.data.cords.x,
-        y: sourceData.data.cords.y,
-      });
-      setLoading(false);
-    } else {
-      setResizeScale(
-        getResizeScale(DEVICE_WIDTH, DEVICE_HEIGHT, viewBoxBorder)
-      );
-    }
-  }, [resizeScale]);
-
-  const changeResizeScale = (increase: boolean) => {
-    if (increase) {
-      if (resizeScale + 0.2 < 2) {
-        setResizeScale((prevState) => prevState + 0.5);
-      }
-    } else {
-      if (resizeScale - 0.5 > 0.1) {
-        setResizeScale((prevState) => prevState - 0.5);
-      }
-    }
-  };
-
-  const triggerLoadCallback = () => {
-    if (loadCallback) {
-      loadCallback();
-    }
-  };
-
-  if (loading) {
-    return null;
   }
 
+  if (renderType === renderTypes.SECTOR) {
+    return {
+      x: viewBoxValues[0],
+      y: viewBoxValues[1],
+      width: viewBoxValues[2],
+      height: viewBoxValues[3],
+    };
+  }
+
+  return { x: 0, y: 0, width: 0, height: 0 };
+};
+
+const ResizeProvider = ({
+  children,
+  initialScale,
+  data,
+  loadCallback,
+  renderType
+}: ResizeContextProps) => {
+  // State
+  const [sourceData, setSourceData] = useState<BaseInput>(data);
+  const [resizeScale, setResizeScale] = useState(initialScale);
+
+  // Parse SVG data (sector only)
+  const parser = new XMLParser(XML_PARSER_CONFIG);
+  const jsonObj = sourceData?.svg && parser.parse(sourceData?.svg);
+  const viewBoxValues = jsonObj?.svg?.['@_viewBox']
+    ? jsonObj.svg['@_viewBox'].split(' ').map(Number)
+    : [0, 0, 0, 0];
+
+  // Memoized values
+  const viewBoxBorder = useMemo(
+    () => calculateViewBoxBorder(sourceData),
+    [sourceData.data.rows]
+  );
+
+  const viewBox = useMemo(
+    () => calculateViewBox(renderType, viewBoxBorder, resizeScale, viewBoxValues),
+    [resizeScale, viewBoxBorder, viewBoxValues, renderType]
+  );
+
+  const triggerLoadCallback = () => {
+    loadCallback?.();
+  };
+
+  const contextValue: ResizeContextType = {
+    viewBox,
+    sourceData,
+    resizeScale,
+    triggerLoadCallback,
+    renderType
+  };
+
   return (
-    <ResizeContext.Provider
-      value={{ viewBox, coords, sourceData, resizeScale, changeResizeScale, triggerLoadCallback }}
-    >
+    <ResizeContext.Provider value={contextValue}>
       {children}
     </ResizeContext.Provider>
   );

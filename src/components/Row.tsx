@@ -1,4 +1,4 @@
-import React, { Fragment, PropsWithChildren, useCallback, memo } from 'react';
+import { PropsWithChildren, useCallback, memo } from 'react';
 import SeatNew from './SeatNew';
 import { Row } from '../types';
 

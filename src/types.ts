@@ -1,3 +1,7 @@
+export enum renderTypes {
+  SECTOR = 'sector',
+  SEAT = 'seat',
+}
 export interface MapInfo {
   id: number;
   name: string;
@@ -49,6 +53,7 @@ export interface BaseInput {
   info: MapInfo;
   categories: Category[] | [];
   data: Data;
+  svg: string;
 }
 
 export enum FontStyle {
@@ -98,4 +103,8 @@ export interface Seat {
   place: number | undefined;
   prePurchase: boolean | undefined;
   category: SeatCategory | undefined;
+}
+
+export interface DrawablePlaceProps {
+  containerDimensions: { height: number; width: number };
 }

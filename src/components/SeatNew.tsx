@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, memo, useMemo } from "react";
+import React, { useContext, useState, memo, useMemo } from "react";
 import { Text, Line, Circle } from "react-native-svg";
 import { ResizeContext, ResizeContextType } from "../provider/ResizeProvider";
 import { Seat } from "../types";
