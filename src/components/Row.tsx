@@ -7,6 +7,7 @@ interface RowProps {
 }
 
 const RowComponent = memo((props: PropsWithChildren<RowProps>) => {
+  
   const renderSeats = useCallback(() => {
     return props.item.seats.map((item) => {
       return (

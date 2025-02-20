@@ -2,7 +2,7 @@ import React, { useContext, useState, memo, useMemo } from "react";
 import { Text, Line, Circle } from "react-native-svg";
 import { ResizeContext, ResizeContextType } from "../provider/ResizeProvider";
 import { Seat } from "../types";
-import { seatSelection } from "../utils/seatSelectionExport";
+import { seatManager } from "../utils/seatSelectionExport";
 
 interface SeatComponentProps {
   item: Seat;
@@ -39,13 +39,17 @@ const darkenColor = (color: string, percent: number): string => {
 
 const SeatNew = memo(
   ({ item, row }: SeatComponentProps) => {
-    const { resizeScale } = useContext(ResizeContext) as ResizeContextType;
+    const { resizeScale, selectedCategoryId } = useContext(ResizeContext) as ResizeContextType;
     const [isSelected, setIsSelected] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const fillColor = useMemo(
-      () => (item.blocked ? "#e5e5e5" : item.category?.color || "#808080"),
-      [item.blocked, item.category?.color]
+      () => (
+        item.blocked ? "#e5e5e5" : 
+        !selectedCategoryId ? (item.category?.color || "#e5e5e5") : 
+        (item.category?.id === selectedCategoryId ? item.category?.color || "#e5e5e5" : "#e5e5e5")
+      ),
+      [item.blocked, item.category?.color, item.category?.id, selectedCategoryId]
     );
 
     const seatColor = useMemo(
@@ -54,11 +58,11 @@ const SeatNew = memo(
     );
    
     const handlePress = React.useCallback(() => {
-      if (item.blocked) return;
+      if (item.blocked || selectedCategoryId && item.category?.id !== selectedCategoryId) return;
     
       setIsLoading(true);
     
-      seatSelection
+      seatManager
         .toggleSeat(item) // This triggers the seat toggle, including verification logic
         .then((isVerified) => {
           // Only toggle the selection state if the seat was successfully verified or added
@@ -70,7 +74,7 @@ const SeatNew = memo(
         .catch(() => {
           setIsLoading(false);
         });
-    }, [item]);
+    }, [item, selectedCategoryId]);
 
 
     if (item.isRowLabel) {

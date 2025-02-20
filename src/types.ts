@@ -23,7 +23,21 @@ export interface MapInfo {
   dsc: string;
 }
 
-export interface Category {}
+export interface Category {
+  id: number;
+  count: number;
+  color: string;
+  textColor: string;
+  price: number;
+  text: {
+    cs: string;
+    de: string | null;
+    en: string | null;
+  };
+  highlight: boolean;
+  desc: string;
+  priority: number;
+}
 
 export interface Coords {
   x: number;
@@ -54,13 +68,34 @@ export interface BaseInput {
   categories: Category[] | [];
   data: Data;
   svg: string;
+  sectors: Sector[];
+}
+
+export interface Sector {
+  sector: string;
+  categories: Category[];
+  name: string;
+  id: number;
+  type: number;
 }
 
 export enum FontStyle {
   BOLD = 'bold',
 }
 
-export interface Shape {}
+export interface Shape {
+  uuid: string;
+  x: number;
+  y: number;
+  radiusX: number;
+  radiusY: number;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  rotation: number;
+  type: string;
+}
+
 export interface Text {
   x: number;
   y: number;
@@ -69,9 +104,9 @@ export interface Text {
   text: string;
   uuid: string;
   color: string;
-  fontsize: number;
+  fontSize: number;
   rotation: number;
-  fontstyle: FontStyle;
+  fontStyle: FontStyle;
 }
 
 export interface Row {
@@ -105,6 +140,27 @@ export interface Seat {
   category: SeatCategory | undefined;
 }
 
-export interface DrawablePlaceProps {
-  containerDimensions: { height: number; width: number };
+export interface SVGPath {
+  '@_d': string;
+  '@_visible'?: string;
+}
+
+export interface SVGPolygon {
+  '@_points': string;
+  '@_visible'?: string;
+}
+
+export interface SVGCircle {
+  '@_cx': string;
+  '@_cy': string;
+  '@_r': string;
+  '@_visible': string;
+}
+
+export interface SVGGroup {
+  '@_class': string;
+  '@_id': string;
+  path?: SVGPath | SVGPath[];
+  polygon?: SVGPolygon | SVGPolygon[];
+  circle?: SVGCircle | SVGCircle[];
 }

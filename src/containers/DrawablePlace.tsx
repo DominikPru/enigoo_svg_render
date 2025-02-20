@@ -4,7 +4,11 @@ import { renderTypes } from '@dominikprusa/enigoo_svg_render/src/types';
 import { SectorRenderer } from '../components/SectorRenderer';
 import { SeatRenderer } from '../components/SeatRenderer';
 
-const DrawablePlace = ({ containerDimensions }) => {
+interface DrawablePlaceProps {
+  containerDimensions: { height: number; width: number };
+}
+
+const DrawablePlace = ({ containerDimensions }: DrawablePlaceProps) => {
   const { renderType } = useContext(ResizeContext) as ResizeContextType;
   const isSector = renderType === renderTypes.SECTOR;
   

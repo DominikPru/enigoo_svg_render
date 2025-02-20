@@ -1,45 +1,183 @@
-import { useContext, useEffect } from 'react';
+import { ReactElement, useContext, useEffect, useCallback, useState } from 'react';
 import { View } from 'react-native';
-import { Svg, Path, Polygon, Text } from 'react-native-svg';
+import { Svg, Path, Polygon, Circle } from 'react-native-svg';
 import { SvgCss } from 'react-native-svg/css';
 import { XMLParser } from 'fast-xml-parser';
 import { ResizeContext, ResizeContextType } from '../provider/ResizeProvider';
+import { SVGCircle, SVGGroup, SVGPath, SVGPolygon } from '../../src/types';
 
-export const SectorRenderer = ({ containerDimensions }) => {
-  const { sourceData, viewBox, triggerLoadCallback } = useContext(
-    ResizeContext
-  ) as ResizeContextType;
+// Types
+interface SectorRendererProps {
+  containerDimensions: {
+    height: number;
+    width: number;
+  };
+}
 
-  if (!sourceData?.svg) {
-    setTimeout(() => {
+// Constants
+const XML_PARSER_CONFIG = {
+  ignoreAttributes: false,
+  attributeNamePrefix: '@_',
+  allowBooleanAttributes: true,
+} as const;
+
+const LOAD_DELAY = 250;
+const CIRCLE_SCALE_FACTOR = 1.3;
+const DEFAULT_COLOR = "#F2F2F2";
+
+export const SectorRenderer = ({ containerDimensions }: SectorRendererProps) => {
+  const {
+    sourceData,
+    viewBox,
+    triggerLoadCallback,
+    triggerSectorCallback,
+    selectedCategoryId
+  } = useContext(ResizeContext) as ResizeContextType;
+  
+  // Loading state tracking
+  const [backgroundSvgLoaded, setBackgroundSvgLoaded] = useState(false);
+  const [overlaySvgReady, setOverlaySvgReady] = useState(false);
+
+  // Helper functions
+  const hasCategoryId = useCallback((sectorId: string): boolean => {
+    if (!selectedCategoryId) return true;
+    const sector = sourceData.sectors?.find(s => s.sector === sectorId);
+    return sector?.categories.some(cat => cat.id === selectedCategoryId) ?? false;
+  }, [sourceData.sectors, selectedCategoryId]);
+
+  const getCategoryColor = useCallback((sectorId: string): string => {
+    const sector = sourceData.sectors?.find(s => s.sector === sectorId);
+    if (!sector?.categories.length) return DEFAULT_COLOR;
+    
+    if (selectedCategoryId && !sector.categories.some(cat => cat.id === selectedCategoryId)) {
+      return DEFAULT_COLOR;
+    }
+  
+    const [firstCategory, secondCategory] = sector.categories;
+    if (firstCategory.price === 0 && secondCategory) {
+      return secondCategory.color;
+    }
+    
+    return firstCategory.color;
+  }, [sourceData.sectors, selectedCategoryId]);
+
+  const handlePress = useCallback((g: SVGGroup) => {
+    if (selectedCategoryId) {
+      const sector = sourceData.sectors?.find(s => s.sector === g['@_id']);
+      if (!sector?.categories.some(cat => cat.id === selectedCategoryId)) return;
+    }
+    
+    const selectedSector = sourceData.sectors?.find(
+      (sector) => sector.sector === g['@_id']
+    );
+    
+    if (selectedSector) {
+      triggerSectorCallback(selectedSector);
+    }
+  }, [sourceData.sectors, selectedCategoryId, triggerSectorCallback]);
+
+  // Effect to handle loading completion
+  useEffect(() => {
+    if (!sourceData?.svg) {
+      // If no SVG, trigger callback after a short delay
+      const timer = setTimeout(() => {
         triggerLoadCallback();
-      }, 200);
-    return (
-        <></>
-    ); 
+      }, LOAD_DELAY);
+      return () => clearTimeout(timer);
+    }
+    
+    // Only trigger callback when both SVG components are loaded
+    if (sourceData.svg && backgroundSvgLoaded && overlaySvgReady) {
+      const timer = setTimeout(() => {
+        triggerLoadCallback();
+      }, LOAD_DELAY);
+      return () => clearTimeout(timer);
+    }
+  }, [sourceData?.svg, backgroundSvgLoaded, overlaySvgReady]);
+
+  // Early return if no SVG data
+  if (!sourceData?.svg) {
+    return null;
   }
 
-  const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '@_',
-    allowBooleanAttributes: true,
+  // Parse SVG data
+  const parser = new XMLParser(XML_PARSER_CONFIG);
+  const jsonObj = parser.parse(sourceData.svg);
+  const viewBoxValues = jsonObj.svg['@_viewBox'].split(' ');
+  
+  const calculateOffsets = () => ({
+    vertical: (containerDimensions.height - viewBox.height) / 2,
+    horizontal: (containerDimensions.width - viewBox.width) / 2
   });
 
-  const jsonObj = parser.parse(sourceData?.svg);
+  const { vertical: verticalOffset, horizontal: horizontalOffset } = calculateOffsets();
 
-  const verticalOffset = (containerDimensions.height - viewBox.height) / 2;
-  const horizontalOffset = (containerDimensions.width - viewBox.width) / 2;
+  // SVG element rendering functions
+  const renderPath = (g: SVGGroup, path: SVGPath, index: number, pathIndex: number): ReactElement => (
+    <Path
+      key={`path-${index}-${pathIndex}`}
+      d={path['@_d']}
+      onStartShouldSetResponder={() => true}
+      onResponderRelease={() => handlePress(g)}
+      fill={selectedCategoryId && !hasCategoryId(g['@_id']) ? "rgba(0, 0, 0, 0.1)" : "transparent"}
+    />
+  );
 
-  const viewBoxValues = jsonObj.svg['@_viewBox'].split(' ');
+  const renderPolygon = (g: SVGGroup, polygon: SVGPolygon, index: number, polygonIndex: number): ReactElement => (
+    <Polygon
+      key={`polygon-${index}-${polygonIndex}`}
+      points={polygon['@_points']}
+      onStartShouldSetResponder={() => true}
+      onResponderRelease={() => handlePress(g)}
+      fill={selectedCategoryId && !hasCategoryId(g['@_id']) ? "rgba(0, 0, 0, 0.1)" : "transparent"}
+    />
+  );
 
-  useEffect(() => {
-    if (sourceData.svg) {
-      setTimeout(() => {
-        triggerLoadCallback();
-      }, 500);
-    }
-  }, [sourceData.svg, triggerLoadCallback]);
+  const renderCircle = (g: SVGGroup, circle: SVGCircle, index: number, circleIndex: number): ReactElement | null => (
+    circle['@_visible'] === 'true' ? (
+      <Circle
+        key={`circle-${index}-${circleIndex}`}
+        cx={circle['@_cx']}
+        cy={circle['@_cy']}
+        r={parseFloat(circle['@_r']) * CIRCLE_SCALE_FACTOR}
+        fill={getCategoryColor(g['@_id'])}
+      />
+    ) : null
+  );
 
+  const renderSectorOverlays = (): ReactElement[] => {
+    return jsonObj.svg.g
+      .filter((g: SVGGroup) => g['@_class'] === 'sector')
+      .flatMap((g: SVGGroup, index: number): ReactElement[] => {
+        const overlays: ReactElement[] = [];
+
+        if (g.path) {
+          const paths = Array.isArray(g.path) ? g.path : [g.path];
+          paths.forEach((path, pathIndex) => {
+            overlays.push(renderPath(g, path, index, pathIndex));
+          });
+        }
+
+        if (g.polygon) {
+          const polygons = Array.isArray(g.polygon) ? g.polygon : [g.polygon];
+          polygons.forEach((polygon, polygonIndex) => {
+            overlays.push(renderPolygon(g, polygon, index, polygonIndex));
+          });
+        }
+
+        if (g.circle) {
+          const circles = Array.isArray(g.circle) ? g.circle : [g.circle];
+          circles.forEach((circle, circleIndex) => {
+            const circleElement = renderCircle(g, circle, index, circleIndex);
+            if (circleElement) overlays.push(circleElement);
+          });
+        }
+
+        return overlays;
+      });
+  };
+
+  // Component render
   return (
     <View style={{ position: 'relative' }}>
       {sourceData.svg && (
@@ -53,7 +191,15 @@ export const SectorRenderer = ({ containerDimensions }) => {
               position: 'absolute',
               top: verticalOffset,
               left: horizontalOffset,
-            }} 
+            }}
+            onLayout={() => {
+              setBackgroundSvgLoaded(true);
+            }}
+            onError={() => {
+              // Handle load errors gracefully
+              console.warn("SVG background failed to load");
+              setBackgroundSvgLoaded(true);
+            }}
           />
      
           <Svg
@@ -65,52 +211,11 @@ export const SectorRenderer = ({ containerDimensions }) => {
               top: verticalOffset,
               left: horizontalOffset,
             }}
+            onLayout={() => {
+              setOverlaySvgReady(true);
+            }}
           >
-            {jsonObj.svg.g
-              .filter((gFilter) => gFilter["@_class"] === 'sector')
-              .map((g, index) => {
-                const overlays = [];
-     
-                if (g.path) {
-                  const paths = Array.isArray(g.path) ? g.path : [g.path];
-                  paths.forEach((path, pathIndex) => {
-                    overlays.push(
-                      <Path
-                        key={`path-${index}-${pathIndex}`} 
-                        d={path['@_d']}
-                        fill="transparent"
-                        stroke="blue"
-                        strokeWidth={5}
-                        onStartShouldSetResponder={() => true}
-                        onResponderRelease={() => {
-                          console.log(`Path Clicked: ${g['@_id'] || 'No ID'}`);
-                        }}
-                      />
-                    );
-                  });
-                }
-     
-                if (g.polygon) {
-                  const polygons = Array.isArray(g.polygon) ? g.polygon : [g.polygon];
-                  polygons.forEach((polygon, polygonIndex) => {
-                    overlays.push(
-                      <Polygon
-                        key={`polygon-${index}-${polygonIndex}`}
-                        points={polygon['@_points']}
-                        fill="transparent"
-                        stroke="red"
-                        strokeWidth={5}
-                        onStartShouldSetResponder={() => true}
-                        onResponderRelease={() => {
-                          console.log(`Polygon Clicked: ${g['@_id'] || 'No ID'}`);
-                        }}
-                      />
-                    );
-                  });
-                }
-     
-                return overlays;
-              })}
+            {renderSectorOverlays()}
           </Svg>
         </>
       )}

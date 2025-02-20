@@ -1,88 +1,93 @@
 import { Seat } from '@dominikprusa/enigoo_svg_render/src/types';
 
-class SeatSelectionManager {
-  private static instance: SeatSelectionManager;
-  private selectedSeats: Seat[] = [];
-  private listeners: Array<(seats: Seat[]) => void> = [];
-  private verificationCallback: ((seat: Seat) => Promise<boolean>) | null = null;
+type Listener = (seats: Seat[]) => void;
 
-  private constructor() {}
+export const createSeatManager = () => {
+  let selectedSeats: Seat[] = [];
+  let listeners: Listener[] = [];
+  let verificationCallback: ((seat: Seat) => Promise<boolean>) | null = null;
 
-  static getInstance(): SeatSelectionManager {
-    if (!SeatSelectionManager.instance) {
-      SeatSelectionManager.instance = new SeatSelectionManager();
-    }
-    return SeatSelectionManager.instance;
-  }
+  const notifyListeners = () => {
+    listeners.forEach(listener => listener([...selectedSeats]));
+  };
 
-  setVerificationCallback(callback: (seat: Seat) => Promise<boolean>) {
-    this.verificationCallback = callback;
-  }
+  const setVerificationCallback = (callback: (seat: Seat) => Promise<boolean>) => {
+    verificationCallback = callback;
+  };
 
-  async toggleSeat(seat: Seat): Promise<boolean> {
-    const exists = this.selectedSeats.some(s => s.id === seat.id);
+  const toggleSeat = async (seat: Seat): Promise<boolean> => {
+    const exists = selectedSeats.some(s => s.id === seat.id);
 
-    if (!this.verificationCallback) {
+    if (!verificationCallback) {
       if (exists) {
-        this.removeSeat(seat);
+        selectedSeats = selectedSeats.filter(s => s.id !== seat.id);
       } else {
-        this.addSeat(seat);
+        selectedSeats.push(seat);
       }
+      notifyListeners();
       return true;
     }
 
     if (exists) {
-      this.removeSeat(seat);
+      selectedSeats = selectedSeats.filter(s => s.id !== seat.id);
+      notifyListeners();
       return true;
     }
 
     try {
-      const isVerified = await this.verificationCallback(seat);
+      const isVerified = await verificationCallback(seat);
       if (isVerified) {
-        this.addSeat(seat);
+        selectedSeats.push(seat);
+        notifyListeners();
       }
       return isVerified;
     } catch (error) {
       return false;
     }
-  }
+  };
 
-  addSeat(seat: Seat) {
-    if (!this.selectedSeats.some(s => s.id === seat.id)) {
-      this.selectedSeats.push(seat);
-      this.notifyListeners();
+  const addSeat = (seat: Seat) => {
+    if (!selectedSeats.some(s => s.id === seat.id)) {
+      selectedSeats.push(seat);
+      notifyListeners();
     }
-  }
+  };
 
-  removeSeat(seat: Seat) {
-    const initialSeatsLength = this.selectedSeats.length;
-    this.selectedSeats = this.selectedSeats.filter(s => s.id !== seat.id);
-    if (this.selectedSeats.length !== initialSeatsLength) {
-      this.notifyListeners();
+  const removeSeat = (seat: Seat) => {
+    const initialLength = selectedSeats.length;
+    selectedSeats = selectedSeats.filter(s => s.id !== seat.id);
+    if (selectedSeats.length !== initialLength) {
+      notifyListeners();
     }
-  }
+  };
 
-  clearSelectedSeats() {
-    if (this.selectedSeats.length > 0) {
-      this.selectedSeats = [];
-      this.notifyListeners();
+  const clearSelectedSeats = () => {
+    if (selectedSeats.length > 0) {
+      selectedSeats = [];
+      notifyListeners();
     }
-  }
+  };
 
-  getSelectedSeats(): Seat[] {
-    return [...this.selectedSeats];
-  }
+  const getSelectedSeats = (): Seat[] => {
+    return [...selectedSeats];
+  };
 
-  subscribe(listener: (seats: Seat[]) => void) {
-    this.listeners.push(listener);
+  const subscribe = (listener: Listener) => {
+    listeners.push(listener);
     return () => {
-      this.listeners = this.listeners.filter(l => l !== listener);
+      listeners = listeners.filter(l => l !== listener);
     };
-  }
+  };
 
-  private notifyListeners() {
-    this.listeners.forEach(listener => listener([...this.selectedSeats]));
-  }
-}
+  return {
+    setVerificationCallback,
+    toggleSeat,
+    addSeat,
+    removeSeat,
+    clearSelectedSeats,
+    getSelectedSeats,
+    subscribe
+  };
+};
 
-export const seatSelection = SeatSelectionManager.getInstance();
+export const seatManager = createSeatManager();
