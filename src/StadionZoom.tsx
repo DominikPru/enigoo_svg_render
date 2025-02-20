@@ -1,20 +1,20 @@
-import React, {useContext, useEffect, useRef, useState} from 'react';
-import {View, TouchableOpacity} from 'react-native';
+import React, { useContext, useEffect, useRef, useState } from "react";
+import { View, TouchableOpacity } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
 import {
   GestureHandlerRootView,
   GestureDetector,
   Gesture,
-} from 'react-native-gesture-handler';
-import {ResizeContext, ResizeContextType} from './provider/ResizeProvider';
-import {renderTypes} from '@dominikprusa/enigoo_svg_render/src/types';
-import DrawablePlace from './containers/DrawablePlace';
-import CategoriesHeader from '@dominikprusa/enigoo_svg_render/src/components/CategoriesHeader';
+} from "react-native-gesture-handler";
+import { ResizeContext, ResizeContextType } from "./provider/ResizeProvider";
+import { renderTypes } from "../src/types";
+import DrawablePlace from "./containers/DrawablePlace";
+import CategoriesHeader from "../src/components/CategoriesHeader";
 
 // Types
 interface StadionZoomProps {
@@ -36,11 +36,11 @@ const StadionZoom: React.FC<StadionZoomProps> = ({
   controlsContainerStyle,
 }) => {
   // Context and state
-  const {viewBox, resizeScale, renderType} = useContext(
-    ResizeContext,
+  const { viewBox, resizeScale, renderType } = useContext(
+    ResizeContext
   ) as ResizeContextType;
   const [containerDimensions, setContainerDimensions] =
-    useState<ContainerDimensions>({width: 0, height: 0});
+    useState<ContainerDimensions>({ width: 0, height: 0 });
   const initialScaleSet = useRef(false);
 
   // Constants
@@ -70,7 +70,7 @@ const StadionZoom: React.FC<StadionZoomProps> = ({
   const getInitialZoom = () => {
     const baseZoom = Math.min(
       containerDimensions.width / viewBox.width,
-      containerDimensions.height / viewBox.height,
+      containerDimensions.height / viewBox.height
     );
     return renderType === renderTypes.SECTOR ? baseZoom : baseZoom * 0.8;
   };
@@ -104,14 +104,14 @@ const StadionZoom: React.FC<StadionZoomProps> = ({
 
   // Worklet functions
   const handleCenterWorklet = () => {
-    'worklet';
+    "worklet";
     animatedValues.scale.value = withSpring(zoomValue, ANIMATION_CONFIG);
     animatedValues.translateX.value = withSpring(0, ANIMATION_CONFIG);
     animatedValues.translateY.value = withSpring(0, ANIMATION_CONFIG);
   };
 
   const handleZoomWorklet = (increase: boolean) => {
-    'worklet';
+    "worklet";
     const factor = increase
       ? ZOOM_LIMITS.ZOOM_IN_FACTOR
       : ZOOM_LIMITS.ZOOM_OUT_FACTOR;
@@ -143,30 +143,30 @@ const StadionZoom: React.FC<StadionZoomProps> = ({
   // Gesture handlers
   const createPinchGesture = () => {
     return Gesture.Pinch()
-      .onStart(event => {
-        'worklet';
+      .onStart((event) => {
+        "worklet";
         animatedValues.zoomDelay.value = 0;
         animatedValues.focalX.value = event.focalX;
         animatedValues.focalY.value = event.focalY;
       })
-      .onUpdate(event => {
-        'worklet';
+      .onUpdate((event) => {
+        "worklet";
         const newScale = Math.max(
           zoomValue,
           Math.min(
             animatedValues.scale.value * event.scale,
-            ZOOM_LIMITS.MAX_SCALE / resizeScale,
-          ),
+            ZOOM_LIMITS.MAX_SCALE / resizeScale
+          )
         );
 
         animatedValues.scale.value = withSpring(
           newScale,
           ANIMATION_CONFIG,
-          isFinished => {
+          (isFinished) => {
             if (isFinished && animatedValues.scale.value < initialZoom) {
               handleCenterWorklet();
             }
-          },
+          }
         );
 
         const scaleFactor = newScale / animatedValues.scale.value;
@@ -179,24 +179,24 @@ const StadionZoom: React.FC<StadionZoomProps> = ({
           animatedValues.translateX.value -
             focalPointAdjustment(
               animatedValues.focalX.value,
-              containerDimensions.width,
+              containerDimensions.width
             ),
-          ANIMATION_CONFIG,
+          ANIMATION_CONFIG
         );
         animatedValues.translateY.value = withSpring(
           animatedValues.translateY.value -
             focalPointAdjustment(
               animatedValues.focalY.value,
-              containerDimensions.height,
+              containerDimensions.height
             ),
-          ANIMATION_CONFIG,
+          ANIMATION_CONFIG
         );
 
         animatedValues.lastOffsetX.value = animatedValues.translateX.value;
         animatedValues.lastOffsetY.value = animatedValues.translateY.value;
       })
       .onEnd(() => {
-        'worklet';
+        "worklet";
         animatedValues.lastOffsetX.value = animatedValues.translateX.value;
         animatedValues.lastOffsetY.value = animatedValues.translateY.value;
 
@@ -216,12 +216,12 @@ const StadionZoom: React.FC<StadionZoomProps> = ({
   const createPanGesture = () => {
     return Gesture.Pan()
       .onStart(() => {
-        'worklet';
+        "worklet";
         animatedValues.lastOffsetX.value = animatedValues.translateX.value;
         animatedValues.lastOffsetY.value = animatedValues.translateY.value;
       })
-      .onUpdate(event => {
-        'worklet';
+      .onUpdate((event) => {
+        "worklet";
         if (
           animatedValues.scale.value > initialZoom &&
           animatedValues.zoomDelay.value === 1 &&
@@ -233,11 +233,11 @@ const StadionZoom: React.FC<StadionZoomProps> = ({
             viewBox.height * animatedValues.scale.value;
           const overflowX = Math.max(
             0,
-            scaledContentWidth * GESTURE_CONSTANTS.SCALE_FACTOR,
+            scaledContentWidth * GESTURE_CONSTANTS.SCALE_FACTOR
           );
           const overflowY = Math.max(
             0,
-            scaledContentHeight * GESTURE_CONSTANTS.SCALE_FACTOR,
+            scaledContentHeight * GESTURE_CONSTANTS.SCALE_FACTOR
           );
 
           const nextX =
@@ -249,16 +249,16 @@ const StadionZoom: React.FC<StadionZoomProps> = ({
 
           animatedValues.translateX.value = Math.max(
             Math.min(nextX, overflowX),
-            -overflowX,
+            -overflowX
           );
           animatedValues.translateY.value = Math.max(
             Math.min(nextY, overflowY),
-            -overflowY,
+            -overflowY
           );
         }
       })
       .onEnd(() => {
-        'worklet';
+        "worklet";
         animatedValues.lastOffsetX.value = animatedValues.translateX.value;
         animatedValues.lastOffsetY.value = animatedValues.translateY.value;
       });
@@ -266,26 +266,27 @@ const StadionZoom: React.FC<StadionZoomProps> = ({
 
   const composedGesture = Gesture.Simultaneous(
     createPanGesture(),
-    createPinchGesture(),
+    createPinchGesture()
   );
 
   // Animated styles
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      {scale: animatedValues.scale.value},
-      {translateX: animatedValues.translateX.value},
-      {translateY: animatedValues.translateY.value},
+      { scale: animatedValues.scale.value },
+      { translateX: animatedValues.translateX.value },
+      { translateY: animatedValues.translateY.value },
     ],
   }));
 
   return (
-    <GestureHandlerRootView style={{flex: 1}}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <View
-        style={{flex: 1}}
-        onLayout={event => {
-          const {width, height} = event.nativeEvent.layout;
-          setContainerDimensions({width, height});
-        }}>
+        style={{ flex: 1 }}
+        onLayout={(event) => {
+          const { width, height } = event.nativeEvent.layout;
+          setContainerDimensions({ width, height });
+        }}
+      >
         <GestureDetector gesture={composedGesture}>
           <Animated.View
             style={[
@@ -294,7 +295,8 @@ const StadionZoom: React.FC<StadionZoomProps> = ({
                 width: containerDimensions.width,
                 height: containerDimensions.height,
               },
-            ]}>
+            ]}
+          >
             <DrawablePlace containerDimensions={containerDimensions} />
           </Animated.View>
         </GestureDetector>
@@ -303,13 +305,15 @@ const StadionZoom: React.FC<StadionZoomProps> = ({
 
         <View
           style={[
-            {position: 'absolute', right: 16, top: 92},
+            { position: "absolute", right: 16, top: 92 },
             controlsContainerStyle,
-          ]}>
+          ]}
+        >
           {ZoomInComponent && (
             <TouchableOpacity
               onPress={() => handleZoom(true)}
-              style={{marginBottom: 8}}>
+              style={{ marginBottom: 8 }}
+            >
               <ZoomInComponent />
             </TouchableOpacity>
           )}
@@ -317,7 +321,8 @@ const StadionZoom: React.FC<StadionZoomProps> = ({
           {ZoomOutComponent && (
             <TouchableOpacity
               onPress={() => handleZoom(false)}
-              style={{marginBottom: 8}}>
+              style={{ marginBottom: 8 }}
+            >
               <ZoomOutComponent />
             </TouchableOpacity>
           )}

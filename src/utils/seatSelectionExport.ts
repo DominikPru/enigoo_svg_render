@@ -1,4 +1,4 @@
-import { Seat } from '@dominikprusa/enigoo_svg_render/src/types';
+import { Seat } from '../../src/types';
 
 type Listener = (seats: Seat[]) => void;
 

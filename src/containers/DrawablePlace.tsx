@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { ResizeContext, ResizeContextType } from '../provider/ResizeProvider';
-import { renderTypes } from '@dominikprusa/enigoo_svg_render/src/types';
+import { renderTypes } from '../../src/types';
 import { SectorRenderer } from '../components/SectorRenderer';
 import { SeatRenderer } from '../components/SeatRenderer';
 
