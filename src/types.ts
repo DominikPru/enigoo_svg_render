@@ -157,10 +157,19 @@ export interface SVGCircle {
   '@_visible': string;
 }
 
+export interface SVGRect {
+  '@_x': string;
+  '@_y': string;
+  '@_width': string;
+  '@_height': string;
+  '@_visible': string;
+}
+
 export interface SVGGroup {
   '@_class': string;
   '@_id': string;
   path?: SVGPath | SVGPath[];
   polygon?: SVGPolygon | SVGPolygon[];
   circle?: SVGCircle | SVGCircle[];
+  rect?: SVGRect | SVGRect[];
 }

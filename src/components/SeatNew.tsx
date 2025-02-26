@@ -43,18 +43,34 @@ const SeatNew = memo(
     const [isSelected, setIsSelected] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    const fillColor = useMemo(
+    // Get the base color of the seat regardless of selection
+    const baseColor = useMemo(
       () => (
-        item.blocked ? "#e5e5e5" : 
-        !selectedCategoryId ? (item.category?.color || "#e5e5e5") : 
-        (item.category?.id === selectedCategoryId ? item.category?.color || "#e5e5e5" : "#e5e5e5")
+        item.blocked ? "#e5e5e5" : (item.category?.color || "#e5e5e5")
       ),
-      [item.blocked, item.category?.color, item.category?.id, selectedCategoryId]
+      [item.blocked, item.category?.color]
     );
 
-    const seatColor = useMemo(
-      () => (isSelected ? darkenColor(fillColor, 0.2) : fillColor),
-      [isSelected, fillColor]
+    // Determine if seat should be faded (when category filter is active but seat isn't in that category)
+    const shouldFade = useMemo(
+      () => (
+        selectedCategoryId && item.category?.id !== selectedCategoryId && !item.blocked
+      ),
+      [selectedCategoryId, item.category?.id, item.blocked]
+    );
+
+    // Calculate the final fill color
+    const fillColor = useMemo(
+      () => (isSelected ? darkenColor(baseColor, 0.2) : baseColor),
+      [isSelected, baseColor]
+    );
+
+    // Calculate opacity based on category selection
+    const seatOpacity = useMemo(
+      () => (
+        isLoading ? 0.5 : (shouldFade ? 0.2 : 1)
+      ),
+      [isLoading, shouldFade]
     );
    
     const handlePress = React.useCallback(() => {
@@ -103,31 +119,33 @@ const SeatNew = memo(
               ? Circle_R_selected * resizeScale
               : Circle_R * resizeScale
           }
-          fill={seatColor}
+          fill={fillColor}
           stroke={item.blocked ? "#dddddd" : "none"}
           strokeWidth={2}
           onStartShouldSetResponder={() => true}
           onResponderRelease={handlePress}
-          opacity={isLoading ? 0.5 : 1}
+          opacity={seatOpacity}
         />
 
         {isSelected && !isLoading && (
           <>
             <Line
-              x1={item.x * resizeScale - 12}
+              x1={item.x * resizeScale - 8}
               y1={item.y * resizeScale + 4}
-              x2={item.x * resizeScale - 4}
+              x2={item.x * resizeScale}
               y2={item.y * resizeScale + 12}
               stroke="white"
-              strokeWidth={5}
+              strokeWidth={4}
+              strokeLinecap="round"
             />
             <Line
-              x1={item.x * resizeScale - 4}
+              x1={item.x * resizeScale}
               y1={item.y * resizeScale + 12}
-              x2={item.x * resizeScale + 8}
-              y2={item.y * resizeScale - 8}
+              x2={item.x * resizeScale + 10}
+              y2={item.y * resizeScale - 6}
               stroke="white"
-              strokeWidth={5}
+              strokeWidth={4}
+              strokeLinecap="round"
             />
           </>
         )}

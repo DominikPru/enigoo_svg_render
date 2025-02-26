@@ -1,10 +1,10 @@
 import { ReactElement, useContext, useEffect, useCallback, useState } from 'react';
 import { View } from 'react-native';
-import { Svg, Path, Polygon, Circle } from 'react-native-svg';
+import { Svg, Path, Polygon, Circle, Rect } from 'react-native-svg';
 import { SvgCss } from 'react-native-svg/css';
 import { XMLParser } from 'fast-xml-parser';
 import { ResizeContext, ResizeContextType } from '../provider/ResizeProvider';
-import { SVGCircle, SVGGroup, SVGPath, SVGPolygon } from '../../src/types';
+import { SVGCircle, SVGGroup, SVGPath, SVGPolygon, SVGRect } from '../../src/types';
 
 // Types
 interface SectorRendererProps {
@@ -133,6 +133,19 @@ export const SectorRenderer = ({ containerDimensions }: SectorRendererProps) => 
     />
   );
 
+  const renderRect = (g: SVGGroup, rect: SVGRect, index: number, rectIndex: number): ReactElement => (
+    <Rect
+      key={`rect-${index}-${rectIndex}`}
+      x={rect['@_x']}
+      y={rect['@_y']}
+      width={rect['@_width']}
+      height={rect['@_height']}
+      onStartShouldSetResponder={() => true}
+      onResponderRelease={() => handlePress(g)}
+      fill={selectedCategoryId && !hasCategoryId(g['@_id']) ? "rgba(0, 0, 0, 0.1)" : "transparent"}
+    />
+  );
+
   const renderCircle = (g: SVGGroup, circle: SVGCircle, index: number, circleIndex: number): ReactElement | null => (
     circle['@_visible'] === 'true' ? (
       <Circle
@@ -153,6 +166,7 @@ export const SectorRenderer = ({ containerDimensions }: SectorRendererProps) => 
 
         if (g.path) {
           const paths = Array.isArray(g.path) ? g.path : [g.path];
+          console.log(paths);
           paths.forEach((path, pathIndex) => {
             overlays.push(renderPath(g, path, index, pathIndex));
           });
@@ -162,6 +176,14 @@ export const SectorRenderer = ({ containerDimensions }: SectorRendererProps) => 
           const polygons = Array.isArray(g.polygon) ? g.polygon : [g.polygon];
           polygons.forEach((polygon, polygonIndex) => {
             overlays.push(renderPolygon(g, polygon, index, polygonIndex));
+          });
+        }
+
+        if (g.rect) {
+          const rects = Array.isArray(g.rect) ? g.rect : [g.rect];
+          rects.forEach((rect, rectIndex) => {
+            const rectElement = renderRect(g, rect, index, rectIndex);
+            if (rectElement) overlays.push(rectElement);
           });
         }
 

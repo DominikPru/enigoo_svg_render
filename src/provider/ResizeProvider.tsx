@@ -72,19 +72,19 @@ export const ResizeContext =
     if (renderType === renderTypes.SECTOR) {
       return { lowx: 0, lowy: 0, highx: 0, highy: 0 };
     }
-  
+    
     let border = {
       lowx: Infinity,
       lowy: Infinity,
       highx: -Infinity,
       highy: -Infinity,
     };
-  
+    
     const updateBounds = (
       bounds: BoundsInput = { x: 0, y: 0, width: 0, height: 0, rotation: 0, x2: 0, y2: 0 },
     ) => {
       const { x = 0, y = 0, x2 = 0, y2 = 0 } = bounds;
-  
+      
       // For text elements, use both x, y and x2, y2 to define bounds
       if (bounds.x2 !== undefined && bounds.y2 !== undefined) {
         border.lowx = Math.min(border.lowx, x, x2);
@@ -99,46 +99,51 @@ export const ResizeContext =
         border.highy = Math.max(border.highy, y);
       }
     };
-  
+    
     // Loop through rows, shapes, and texts
     sourceData.data?.rows?.forEach(row => row.seats?.forEach(updateBounds));
     sourceData.data?.shapes?.forEach(updateBounds);
     sourceData.data?.texts?.forEach(updateBounds);  // This will now apply the x2, y2 logic
-  
+    
     // If no bounds were updated, return default border
     if (border.lowx === Infinity) {
       return { lowx: 0, lowy: 0, highx: 0, highy: 0 };
     }
-  
-    return border;
-  };
-  
-const calculateViewBox = (
-  renderType: renderTypes,
-  viewBoxBorder: ViewBoxBorder,
-  resizeScale: number,
-  viewBoxValues: number[],
-): ViewBoxProps => {
-  if (renderType === renderTypes.SECTOR) {
+    
+    // Apply padding to the borders directly
+    const padding = 10; // Using a larger padding for safety
+    
     return {
-      x: viewBoxValues[0],
-      y: viewBoxValues[1],
-      width: viewBoxValues[2],
-      height: viewBoxValues[3],
+      lowx: border.lowx - padding,
+      lowy: border.lowy - padding,
+      highx: border.highx + padding,
+      highy: border.highy + padding
     };
-  }
-
-  // 🔹 Increase padding for safety
-  const padding = 20; // Try adjusting this value if needed
-
-  return {
-    x: (viewBoxBorder.lowx - padding) * resizeScale,
-    y: (viewBoxBorder.lowy - padding) * resizeScale,
-    width: (viewBoxBorder.highx - viewBoxBorder.lowx + 2 * padding) * resizeScale,
-    height: (viewBoxBorder.highy - viewBoxBorder.lowy + 2 * padding) * resizeScale,
   };
-};
-
+  
+  const calculateViewBox = (
+    renderType: renderTypes,
+    viewBoxBorder: ViewBoxBorder,
+    resizeScale: number,
+    viewBoxValues: number[],
+  ): ViewBoxProps => {
+    if (renderType === renderTypes.SECTOR) {
+      return {
+        x: viewBoxValues[0],
+        y: viewBoxValues[1],
+        width: viewBoxValues[2],
+        height: viewBoxValues[3],
+      };
+    }
+    
+    // No padding needed here since it's already in the viewBoxBorder
+    return {
+      x: viewBoxBorder.lowx * resizeScale,
+      y: viewBoxBorder.lowy * resizeScale,
+      width: (viewBoxBorder.highx - viewBoxBorder.lowx) * resizeScale,
+      height: (viewBoxBorder.highy - viewBoxBorder.lowy) * resizeScale,
+    };
+  };
 
 const ResizeProvider = ({
   children,

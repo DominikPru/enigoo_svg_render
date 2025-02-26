@@ -1,6 +1,12 @@
-import {useCallback, useContext, useEffect, useRef, useState} from 'react';
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useContext,
+  useEffect,
+} from 'react';
 import {View} from 'react-native';
-import {Svg, G, Rect, Text, Ellipse} from 'react-native-svg';
+import {Svg, G, Rect, Text, Ellipse, Circle} from 'react-native-svg';
 import {SvgCssUri} from 'react-native-svg/css';
 import RowComponent from '../components/Row';
 import {ResizeContext, ResizeContextType} from '../provider/ResizeProvider';
@@ -10,15 +16,18 @@ interface SeatRendererProps {
 }
 
 const LOAD_DELAY = 250;
+const PADDING = 500;
 
 export const SeatRenderer = ({containerDimensions}: SeatRendererProps) => {
   const {sourceData, viewBox, resizeScale, triggerLoadCallback} = useContext(
     ResizeContext,
   ) as ResizeContextType;
-  
-  const [svgBackgroundLoaded, setSvgBackgroundLoaded] = useState(!sourceData.data.svgs || sourceData.data.svgs.length === 0);
+
+  const [svgBackgroundLoaded, setSvgBackgroundLoaded] = useState(
+    !sourceData.data.svgs || sourceData.data.svgs.length === 0,
+  );
   const [mainSvgLayoutReady, setMainSvgLayoutReady] = useState(false);
-  
+
   const hasSvgs = sourceData.data.svgs && sourceData.data.svgs.length > 0;
 
   const svgWidth = hasSvgs
@@ -36,10 +45,8 @@ export const SeatRenderer = ({containerDimensions}: SeatRendererProps) => {
   const shapes = sourceData.data.shapes || [];
   const texts = sourceData.data.texts || [];
 
-  // Check if everything is loaded and trigger the callback
   useEffect(() => {
     if (svgBackgroundLoaded && mainSvgLayoutReady) {
-      // Add a small delay to ensure all children have rendered
       setTimeout(() => {
         triggerLoadCallback();
       }, LOAD_DELAY);
@@ -76,7 +83,6 @@ export const SeatRenderer = ({containerDimensions}: SeatRendererProps) => {
         );
       }
 
-      // Default to rectangle
       return (
         <Rect
           key={shape.uuid}
@@ -90,6 +96,8 @@ export const SeatRenderer = ({containerDimensions}: SeatRendererProps) => {
           transform={`rotate(${shape.rotation}, ${shape.x * resizeScale}, ${
             shape.y * resizeScale
           })`}
+          stroke={shape.stroke}
+          strokeWidth={shape.strokeWidth}
         />
       );
     });
@@ -97,34 +105,74 @@ export const SeatRenderer = ({containerDimensions}: SeatRendererProps) => {
 
   const renderTexts = useCallback(() => {
     return texts.map(text => {
-      const { rotation, fontSize, color, text: content, uuid, x, y } = text;
-      
-      // Scale the coordinates
-      const scaledX = x * resizeScale;
-      const scaledY = y * resizeScale + fontSize / 1.5 * resizeScale;
+      const {rotation, fontSize, color, text: content, uuid, x, y} = text;
+      const [textSize, setTextSize] = useState({width: 0, height: 0});
+      const [isLayoutReady, setIsLayoutReady] = useState(false);
+
       const scaledFontSize = fontSize * resizeScale;
-      
+
+      const handleTextLayout = useCallback(event => {
+        const {width, height} = event.nativeEvent.layout;
+        setTextSize({width, height});
+        setIsLayoutReady(true);
+      }, []);
+
+      useEffect(() => {
+        if (isLayoutReady) {
+          console.log(`✅ Text "${content}" is ready.`);
+        }
+      }, [isLayoutReady]);
+
+      // Ensure layout is ready before rendering
+      if (!isLayoutReady) {
+        return (
+          <Text
+            key={uuid}
+            x={x * resizeScale}
+            y={y * resizeScale}
+            fontSize={scaledFontSize}
+            fill="transparent" // Invisible initial render
+            onLayout={handleTextLayout}>
+            {content}
+          </Text>
+        );
+      }
+
+      // ✅ Correct center calculation
+      const centerX = x * resizeScale + textSize.width / 2;
+      const centerY = y * resizeScale + scaledFontSize / 2 + textSize.height / 2;
+
+      console.log(`🔹 Center point for "${content}": (${centerX}, ${centerY})`);
+      console.log(
+        `🔹 Text size for "${content}": (${textSize.width}, ${textSize.height})`,
+      );
+      console.log(`🔹 Rotation for "${content}": ${rotation}`);
+      console.log(
+        `🔹 Position for "${content}": (${x * resizeScale}, ${
+          y * resizeScale
+        })`,
+      );
+
       return (
         <Text
           key={uuid}
-          x={scaledX}
-          y={scaledY}
+          x={centerX}
+          y={centerY}
           fontSize={scaledFontSize}
           fill={color}
-          textAnchor="start"
-          transform={`rotate(${rotation} ${scaledX} ${scaledY})`}
-        >
+          textAnchor="middle"
+          alignmentBaseline="middle"
+          transform={`rotate(${rotation}, ${x * resizeScale}, ${
+            y * resizeScale
+          })`}>
           {content}
         </Text>
       );
     });
   }, [texts, resizeScale]);
-  
-  
-  
 
   const effectiveViewBox = hasSvgs
-    ? `0 0 ${svgWidth} ${svgHeight}`
+    ? `0 0 ${svgWidth + PADDING} ${svgHeight + PADDING}`
     : `${(-14 * resizeScale) / 2} ${(-14 * resizeScale) / 2} ${
         viewBox.width + 14 * resizeScale
       } ${viewBox.height + 14 * resizeScale}`;
@@ -138,7 +186,6 @@ export const SeatRenderer = ({containerDimensions}: SeatRendererProps) => {
         (sourceData.data.svgs[0].y - viewBox.y) * -resizeScale
       })`
     : `translate(${-viewBox.x}, ${-viewBox.y})`;
-    
 
   return (
     <View style={{position: 'relative'}}>
@@ -154,7 +201,6 @@ export const SeatRenderer = ({containerDimensions}: SeatRendererProps) => {
           uri={sourceData.data.svgs[0].data}
           onError={error => {
             console.error('SVG Load Error:', error);
-            // In case of error, mark as loaded to prevent blocking
             setSvgBackgroundLoaded(true);
           }}
           onLoad={() => {
@@ -164,8 +210,8 @@ export const SeatRenderer = ({containerDimensions}: SeatRendererProps) => {
       )}
 
       <Svg
-        width={svgWidth}
-        height={svgHeight}
+        width={hasSvgs ? svgWidth + PADDING : svgWidth}
+        height={hasSvgs ? svgHeight + PADDING : svgHeight}
         style={{
           position: 'absolute',
           top: verticalOffset,
